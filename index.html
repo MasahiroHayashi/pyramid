@@ -1,0 +1,1033 @@
+﻿<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0" />
+<meta name="description" content="全国の年齢各歳別の人口ピラミッド（1980～2015）を作成するWEBアプリケーション" />
+<meta name="keywords" content="統計,e-stat,API,人口ピラミッド" />
+<meta name="google-site-verification" content="HAbYWSXLb0DE_SK38gagjV3FDd2uxkicP5acUi0AVpY" />
+<link rel="canonical" href="https://www.mirko.jp/pyramid/">
+<!-- ogp -->
+<meta property="og:site_name" content="全国人口ピラミッダー" />
+<meta property="og:title" content="全国人口ピラミッダー" />
+<meta property="og:url" content="https://www.mirko.jp/pyramid/" />
+<meta property="og:image" content="https://www.mirko.jp/pyramid/ogp_card.jpg" />
+<meta property="og:description" content="全国の年齢各歳別の人口ピラミッド（1980～2015）を作成するWEBアプリケーション" />
+<meta property="og:type" content="website" />
+<!-- facebook -->
+<meta property="fb:app_id" content="398953874192431" />
+<!-- twitter card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://www.mirko.jp/pyramid/" />
+<meta name="twitter:site" content="全国人口ピラミッダー">
+<meta name="twitter:creator" content="@catfishm2">
+<meta name="twitter:title" content="全国人口ピラミッダー" />
+<meta name="twitter:description" content="全国の年齢各歳別の人口ピラミッド（1980～2015）を作成するWEBアプリケーション">
+<meta name="twitter:image:src" content="https://www.mirko.jp/pyramid/ogp_card.jpg">
+
+<title>全国人口ピラミッダー</title>
+<link rel="stylesheet" type="text/css" href="loading.css">
+<link rel="stylesheet" type="text/css" href="index.css">
+<script type="text/javascript" src="statapimagic-1.5.js"></script>
+<script type="text/javascript" src="popj.js"></script>
+<script type="text/javascript" src="loader.js"></script>
+<script type="text/javascript" src="selectArea.js"></script>
+<script type="text/javascript">
+
+//★★★★★★★★★★★★★★★★　グローバル変数　★★★★★★★★★★★★★★★★
+//取得したオブジェクトを入れておく配列
+let str1980, str1985, str1990, str1995, str2000, str2005, str2010, str2015, str2020 ;
+//男女別年齢別の値を入れておく配列( 0-100：年齢各歳　/　101：合計　/　102：年齢不詳 )
+let m1980 = new Array(103); let f1980 = new Array(103); let m1985 = new Array(103); let f1985 = new Array(103); 
+let m1990 = new Array(103); let f1990 = new Array(103); let m1995 = new Array(103); let f1995 = new Array(103); 
+let m2000 = new Array(103); let f2000 = new Array(103); let m2005 = new Array(103); let f2005 = new Array(103); 
+let m2010 = new Array(103); let f2010 = new Array(103); let m2015 = new Array(103); let f2015 = new Array(103); 
+let m2020 = new Array(103); let f2020 = new Array(103); 
+//初期値はすべて0(人)とする
+for(let i=0;i<m1980.length;i++){
+	m1980[i]=0; f1980[i]=0; m1985[i]=0; f1985[i]=0; m1990[i]=0; f1990[i]=0; m1995[i]=0; f1995[i]=0; 
+	m2000[i]=0; f2000[i]=0; m2005[i]=0; f2005[i]=0; m2010[i]=0; f2010[i]=0; m2015[i]=0; f2015[i]=0; 
+	m2020[i]=0; f2020[i]=0; 
+}
+//チャート用オブジェクト（0-100：年齢各歳）
+let chartObj1980 = new Array(101); let chartObj1985 = new Array(101); let chartObj1990 = new Array(101); let chartObj1995 = new Array(101); 
+let chartObj2000 = new Array(101); let chartObj2005 = new Array(101); let chartObj2010 = new Array(101); let chartObj2015 = new Array(101); 
+let chartObj2020 = new Array(101); 
+//スマホと振り分けるためのチャートオプション
+let titleSize ;
+let populationTextSize ;
+let ageTextSize ;
+let ageVisible ;
+let chartleftSpace ;
+let chartrightSpace ;
+//タイマー用（今何年を表示しているか）
+let yearNum = 1980 ;
+//クリアタイムアウトに入れるためのタイマーID（外部からストップさせるためにグローバル化）
+let timeID = 0 ; 
+//グラフのメモリの値（1:男最大値、2:男中間値、3:女中間値、4:女最大値）
+let tics1, tics2, tics3, tics4 ;
+//チャートそのもののオブジェクトををグローバル変数化（クリアなどできるように）
+let data ;    // チャートに入れるデータ
+let options ; // オプション
+let chart ;   // チャートオブジェクト
+let formatter ; // フォーマッター（ピラミッドの表示の女のマイナスをプラスにする）
+//その他
+let selectArea ; 
+let areaName ; 
+let appID = "dcb8af460c73985dd0352d428facfa3011ef2d71" ;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+window.addEventListener("load",loadFrontImg,false);
+
+function loadFrontImg(){
+	if(window.innerWidth > 750){ //スマホでない
+		document.getElementById("chart_div").innerHTML = '<img src="pyramid.jpg"/>';
+	}else{ //スマホ
+		document.getElementById("chart_div").innerHTML = '<img src="pyramidS.jpg"/>';
+	}
+}
+
+function get1980data(){
+	if(document.getElementById('cityField').innerHTML != ""){
+		index = document.myForm1.cityField.selectedIndex; 
+		selectArea = document.myForm1.cityField.options[index].value; 
+		areaName = document.myForm1.cityField.options[index].text;
+	}else if(document.getElementById('prefField').innerHTML != ""){
+		index = document.myForm1.prefField.selectedIndex; 
+		selectArea = document.myForm1.prefField.options[index].value; 
+		areaName = document.myForm1.prefField.options[index].text;
+	}
+	//日本全体だった場合
+	if(selectArea==00000){
+		areaName = "日本全体" ;
+		populationJapan(); // popj.js内に関数あり
+		getMaxPopulation();
+		return ;
+	}
+	//日本全体以外だった場合
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0000030128';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=320';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str1980 = XMLhttpObject.responseText; 
+			get1985data();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+function get1985data(){
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0000030450';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=320';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str1985 = XMLhttpObject.responseText; 
+			get1990data();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+function get1990data(){
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0000031401';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=380';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+		XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str1990 = XMLhttpObject.responseText; 
+			get1995data();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+function get1995data(){
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0000032219';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=380';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str1995 = XMLhttpObject.responseText; 
+			get2000data();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+function get2000data(){
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0000032965';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=380';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str2000 = XMLhttpObject.responseText; 
+			get2005data();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+function get2005data(){
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0000033787';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=420';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str2005 = XMLhttpObject.responseText; 
+			get2010data();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+function get2010data(){
+let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0003041389';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=830';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str2010 = XMLhttpObject.responseText; 
+			get2015data();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+function get2015data(){
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0003148521';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=830';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str2015 = XMLhttpObject.responseText; 
+			convertSimpleJson();
+		}
+	};
+	XMLhttpObject.send(null);
+}
+
+//半角文字→全角文字の関数
+function zenkaku2Hankaku(str) {
+	return str.replace(/[A-Za-z0-9]/g, function(s) {
+		return String.fromCharCode(s.charCodeAt(0) + 0xFEE0);
+	});
+}
+
+function convertSimpleJson(){
+
+	//初期値はすべて0(人)とする
+	for(let i=0;i<m1980.length;i++){
+		m1980[i]=0; f1980[i]=0; m1985[i]=0; f1985[i]=0; m1990[i]=0; f1990[i]=0; m1995[i]=0; f1995[i]=0; 
+		m2000[i]=0; f2000[i]=0; m2005[i]=0; f2005[i]=0; m2010[i]=0; f2010[i]=0; m2015[i]=0; f2015[i]=0; 
+		m2020[i]=0; f2020[i]=0; 
+	}
+
+	/////// ★★★★　1980　★★★★
+	///  XMLHttpRequestを使う場合はサーバーでエンコードされた文字列がそのまま返ってくるので以下の処理が必要  ///
+	const str1980ori1 = str1980.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str1980ori2  = unescape(str1980ori1);  //文字列をデコード
+	const obj1980ori = JSON.parse(str1980ori2);  //デコードした文字列をオブジェクト化
+
+	///////////  option について  //////////////////
+	//  1　：シンプルjson
+	//  2　：シンプルjsonコード番号付
+	//  3　：統計表情報付シンプルjson
+	//  4　：統計表情報付シンプルjsonコード番号付
+	//  5　：シンプルcsv
+	//  6　：シンプルcsvコード番号付
+	//  7　：統計表情報付シンプルcsv
+	//  8　：統計表情報付シンプルcsvコード番号付
+	//  0　：元のjson
+	////////////////////////////////////////////////
+	const str1980s = StatApiMagic(obj1980ori,1); //オブジェクトをシンプル文字列化
+	
+	if (typeof str1980s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		
+		const jsonParse1980 = JSON.parse(str1980s);      //再度オブジェクト化
+		let zenYear1980 ; //年齢（全角文字列）
+		for(let i=0; i<jsonParse1980.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear1980 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse1980[i]['全域・集中の別030002']=="全域" && jsonParse1980[i]['年齢各歳階級Ｂ030003']== zenYear1980){
+					if(jsonParse1980[i]['男女Ａ030001']=="男"){
+						m1980[j] = Number(jsonParse1980[i]['値']);
+						break;
+					}else if(jsonParse1980[i]['男女Ａ030001']=="女"){
+						f1980[j] = Number(jsonParse1980[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse1980[i]['全域・集中の別030002']=="全域" && jsonParse1980[i]['年齢各歳階級Ｂ030003']== "１００歳以上"){
+				if(jsonParse1980[i]['男女Ａ030001']=="男"){
+					m1980[100] = Number(jsonParse1980[i]['値']);
+				}else if(jsonParse1980[i]['男女Ａ030001']=="女"){
+					f1980[100] = Number(jsonParse1980[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse1980[i]['全域・集中の別030002']=="全域" && jsonParse1980[i]['年齢各歳階級Ｂ030003']== "総数"){
+				if(jsonParse1980[i]['男女Ａ030001']=="男"){
+					m1980[101] = Number(jsonParse1980[i]['値']);
+				}else if(jsonParse1980[i]['男女Ａ030001']=="女"){
+					f1980[101] = Number(jsonParse1980[i]['値']);
+				}
+			}
+		}
+	}
+	let yearAllm = 0 ;
+	let yearAllf = 0 ;
+	for(let i=0; i<chartObj1980.length - 1; i++){
+		chartObj1980[i] = [ i+"歳" , m1980[i] , -f1980[i] ];
+		yearAllm = yearAllm + m1980[i] ;
+		yearAllf = yearAllf + f1980[i] ;
+	}
+	chartObj1980[100] = ["100~" , m1980[100] , -f1980[100] ];
+	m1980[102] = m1980[101] - (yearAllm + m1980[100]);
+	f1980[102] = f1980[101] - (yearAllf + f1980[100]);
+
+	
+	/////// ★★★★　1985　★★★★
+	const str1985ori1 = str1985.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str1985ori2  = unescape(str1985ori1);  //文字列をデコード
+	const obj1985ori = JSON.parse(str1985ori2);  //デコードした文字列をオブジェクト化
+	const str1985s = StatApiMagic(obj1985ori,1); //オブジェクトをシンプル文字列化
+	
+	if (typeof str1985s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse1985 = JSON.parse(str1985s);      //再度オブジェクト化
+		let zenYear1985 ; //年齢（全角文字列）
+		for(let i=0; i<jsonParse1985.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear1985 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse1985[i]['全域・集中の別030002']=="全域" && jsonParse1985[i]['年齢各歳階級Ｂ030126']== zenYear1985){
+					if(jsonParse1985[i]['男女Ａ030001']=="男"){
+						m1985[j] = Number(jsonParse1985[i]['値']);
+						break;
+					}else if(jsonParse1985[i]['男女Ａ030001']=="女"){
+						f1985[j] = Number(jsonParse1985[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse1985[i]['全域・集中の別030002']=="全域" && jsonParse1985[i]['年齢各歳階級Ｂ030126']== "１００歳以上"){
+				if(jsonParse1985[i]['男女Ａ030001']=="男"){
+					m1985[100] = Number(jsonParse1985[i]['値']);
+				}else if(jsonParse1985[i]['男女Ａ030001']=="女"){
+					f1985[100] = Number(jsonParse1985[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse1985[i]['全域・集中の別030002']=="全域" && jsonParse1985[i]['年齢各歳階級Ｂ030126']== "総数"){
+				if(jsonParse1985[i]['男女Ａ030001']=="男"){
+					m1985[101] = Number(jsonParse1985[i]['値']);
+				}else if(jsonParse1985[i]['男女Ａ030001']=="女"){
+					f1985[101] = Number(jsonParse1985[i]['値']);
+				}
+			}
+		}
+	}
+	yearAllm = 0 ;
+	yearAllf = 0 ;
+	for(let i=0; i<chartObj1985.length - 1; i++){
+		chartObj1985[i] = [ i+"歳" , m1985[i] , -f1985[i] ];
+		yearAllm = yearAllm + m1985[i] ;
+		yearAllf = yearAllf + f1985[i] ;
+	}
+	chartObj1985[100] = ["100~" , m1985[100] , -f1985[100] ];
+	m1985[102] = m1985[101] - (yearAllm + m1985[100]);
+	f1985[102] = f1985[101] - (yearAllf + f1985[100]);
+
+	/////// ★★★★　1990　★★★★
+	const str1990ori1 = str1990.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str1990ori2  = unescape(str1990ori1);  //文字列をデコード
+	const obj1990ori = JSON.parse(str1990ori2);  //デコードした文字列をオブジェクト化
+	const str1990s = StatApiMagic(obj1990ori,1); //オブジェクトをシンプル文字列化
+
+	if (typeof str1990s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse1990 = JSON.parse(str1990s);      //再度オブジェクト化
+		for(let i=0; i<jsonParse1990.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				//zenYear1990 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse1990[i]['全域・集中の別030002']=="全域" && jsonParse1990[i]['年齢各歳階級Ａ030399']== j+"歳"){
+					if(jsonParse1990[i]['男女Ａ030001']=="男"){
+						m1990[j] = Number(jsonParse1990[i]['値']);
+						break;
+					}else if(jsonParse1990[i]['男女Ａ030001']=="女"){
+						f1990[j] = Number(jsonParse1990[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse1990[i]['全域・集中の別030002']=="全域" && jsonParse1990[i]['年齢各歳階級Ａ030399']== "100歳以上"){
+				if(jsonParse1990[i]['男女Ａ030001']=="男"){
+					m1990[100] = Number(jsonParse1990[i]['値']);
+				}else if(jsonParse1990[i]['男女Ａ030001']=="女"){
+					f1990[100] = Number(jsonParse1990[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse1990[i]['全域・集中の別030002']=="全域" && jsonParse1990[i]['年齢各歳階級Ａ030399']== "総数"){
+				if(jsonParse1990[i]['男女Ａ030001']=="男"){
+					m1990[101] = Number(jsonParse1990[i]['値']);
+				}else if(jsonParse1990[i]['男女Ａ030001']=="女"){
+					f1990[101] = Number(jsonParse1990[i]['値']);
+				}
+			}
+			// 不詳
+			if(jsonParse1990[i]['全域・集中の別030002']=="全域" && jsonParse1990[i]['年齢各歳階級Ａ030399']== "不詳"){
+				if(jsonParse1990[i]['男女Ａ030001']=="男"){
+					m1990[102] = Number(jsonParse1990[i]['値']);
+				}else if(jsonParse1990[i]['男女Ａ030001']=="女"){
+					f1990[102] = Number(jsonParse1990[i]['値']);
+				}
+			}
+		}
+	}
+	for(let i=0; i<chartObj1990.length - 1; i++){
+		chartObj1990[i] = [ i+"歳" , m1990[i] , -f1990[i] ];
+	}
+	chartObj1990[100] = ["100~" , m1990[100] , -f1990[100] ];
+		
+	/////// ★★★★　1995　★★★★
+	const str1995ori1 = str1995.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str1995ori2  = unescape(str1995ori1);  //文字列をデコード
+	const obj1995ori = JSON.parse(str1995ori2);  //デコードした文字列をオブジェクト化
+	const str1995s = StatApiMagic(obj1995ori,1); //オブジェクトをシンプル文字列化
+		
+	if (typeof str1995s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse1995 = JSON.parse(str1995s);      //再度オブジェクト化
+		for(let i=0; i<jsonParse1995.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear1995 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse1995[i]['全域・集中の別030002']=="全域" && jsonParse1995[i]['年齢各歳１２３030798']== j+"歳"){
+					if(jsonParse1995[i]['男女３３030747']=="男"){
+						m1995[j] = Number(jsonParse1995[i]['値']);
+						break;
+					}else if(jsonParse1995[i]['男女３３030747']=="女"){
+						f1995[j] = Number(jsonParse1995[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse1995[i]['全域・集中の別030002']=="全域" && jsonParse1995[i]['年齢各歳１２３030798']== "100歳以上"){
+				if(jsonParse1995[i]['男女３３030747']=="男"){
+					m1995[100] = Number(jsonParse1995[i]['値']);
+				}else if(jsonParse1995[i]['男女３３030747']=="女"){
+					f1995[100] = Number(jsonParse1995[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse1995[i]['全域・集中の別030002']=="全域" && jsonParse1995[i]['年齢各歳１２３030798']== "総数"){
+				if(jsonParse1995[i]['男女３３030747']=="男"){
+					m1995[101] = Number(jsonParse1995[i]['値']);
+				}else if(jsonParse1995[i]['男女３３030747']=="女"){
+					f1995[101] = Number(jsonParse1995[i]['値']);
+				}
+			}
+			// 不詳
+			if(jsonParse1995[i]['全域・集中の別030002']=="全域" && jsonParse1995[i]['年齢各歳１２３030798']== "不詳"){
+				if(jsonParse1995[i]['男女３３030747']=="男"){
+					m1995[102] = Number(jsonParse1995[i]['値']);
+				}else if(jsonParse1995[i]['男女３３030747']=="女"){
+					f1995[102] = Number(jsonParse1995[i]['値']);
+				}
+			}
+		}
+	}
+	for(let i=0; i<chartObj1995.length - 1; i++){
+		chartObj1995[i] = [ i+"歳" , m1995[i] , -f1995[i] ];
+	}
+	chartObj1995[100] = ["100~" , m1995[100] , -f1995[100] ];
+	
+	/////// ★★★★　2000　★★★★
+	const str2000ori1 = str2000.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str2000ori2  = unescape(str2000ori1);  //文字列をデコード
+	const obj2000ori = JSON.parse(str2000ori2);  //デコードした文字列をオブジェクト化
+	const str2000s = StatApiMagic(obj2000ori,1); //オブジェクトをシンプル文字列化
+	
+	if (typeof str2000s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse2000 = JSON.parse(str2000s);      //再度オブジェクト化
+		for(let i=0; i<jsonParse2000.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear2000 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse2000[i]['全域・集中の別030184']=="全域" && jsonParse2000[i]['年齢各歳１２３030798']== j+"歳" && jsonParse2000[i]['国籍031121']=="総数（外国，不詳を含む）"){
+					if(jsonParse2000[i]['男女031123']=="　男"){
+						m2000[j] = Number(jsonParse2000[i]['値']);
+						break;
+					}else if(jsonParse2000[i]['男女031123']=="　女"){
+						f2000[j] = Number(jsonParse2000[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse2000[i]['全域・集中の別030184']=="全域" && jsonParse2000[i]['年齢各歳１２３030798']== "100歳以上" && jsonParse2000[i]['国籍031121']=="総数（外国，不詳を含む）"){
+				if(jsonParse2000[i]['男女031123']=="　男"){
+					m2000[100] = Number(jsonParse2000[i]['値']);
+				}else if(jsonParse2000[i]['男女031123']=="　女"){
+					f2000[100] = Number(jsonParse2000[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse2000[i]['全域・集中の別030184']=="全域" && jsonParse2000[i]['年齢各歳１２３030798']== "総数" && jsonParse2000[i]['国籍031121']=="総数（外国，不詳を含む）"){
+				if(jsonParse2000[i]['男女031123']=="　男"){
+					m2000[101] = Number(jsonParse2000[i]['値']);
+				}else if(jsonParse2000[i]['男女031123']=="　女"){
+					f2000[101] = Number(jsonParse2000[i]['値']);
+				}
+			}
+			// 不詳
+			if(jsonParse2000[i]['全域・集中の別030184']=="全域" && jsonParse2000[i]['年齢各歳１２３030798']== "不詳" && jsonParse2000[i]['国籍031121']=="総数（外国，不詳を含む）"){
+				if(jsonParse2000[i]['男女031123']=="　男"){
+					m2000[102] = Number(jsonParse2000[i]['値']);
+				}else if(jsonParse2000[i]['男女031123']=="　女"){
+					f2000[102] = Number(jsonParse2000[i]['値']);
+				}
+			}
+		}
+	}
+	for(let i=0; i<chartObj2000.length - 1; i++){
+		chartObj2000[i] = [ i+"歳" , m2000[i] , -f2000[i] ];
+	}
+	chartObj2000[100] = ["100~" , m2000[100] , -f2000[100] ];
+
+	/////// ★★★★　2005　★★★★
+	const str2005ori1 = str2005.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str2005ori2  = unescape(str2005ori1);  //文字列をデコード
+	const obj2005ori = JSON.parse(str2005ori2);  //デコードした文字列をオブジェクト化
+	const str2005s = StatApiMagic(obj2005ori,1); //オブジェクトをシンプル文字列化
+	
+	if (typeof str2005s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse2005 = JSON.parse(str2005s);      //再度オブジェクト化
+		for(let i=0; i<jsonParse2005.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear2005 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse2005[i]['全域・集中の別030184']=="全域" && jsonParse2005[i]['年齢階級031470']== j+"歳"){
+					if(jsonParse2005[i]['男女031421']=="　男"){
+						m2005[j] = Number(jsonParse2005[i]['値']);
+						break;
+					}else if(jsonParse2005[i]['男女031421']=="　女"){
+						f2005[j] = Number(jsonParse2005[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse2005[i]['全域・集中の別030184']=="全域" && (jsonParse2005[i]['年齢階級031470']== "100～104歳" || jsonParse2005[i]['年齢階級031470']== "105～109歳")){
+				if(jsonParse2005[i]['男女031421']=="　男"){
+					m2005[100] = Number(jsonParse2005[i]['値']);
+				}else if(jsonParse2005[i]['男女031421']=="　女"){
+					f2005[100] = Number(jsonParse2005[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse2005[i]['全域・集中の別030184']=="全域" && jsonParse2005[i]['年齢階級031470']== "総数" ){
+				if(jsonParse2005[i]['男女031421']=="　男"){
+					m2005[101] = Number(jsonParse2005[i]['値']);
+				}else if(jsonParse2005[i]['男女031421']=="　女"){
+					f2005[101] = Number(jsonParse2005[i]['値']);
+				}
+			}
+			// 不詳
+			if(jsonParse2005[i]['全域・集中の別030184']=="全域" && jsonParse2005[i]['年齢階級031470']== "不詳" ){
+				if(jsonParse2005[i]['男女031421']=="　男"){
+					m2005[102] = Number(jsonParse2005[i]['値']);
+				}else if(jsonParse2005[i]['男女031421']=="　女"){
+					f2005[102] = Number(jsonParse2005[i]['値']);
+				}
+			}
+		}
+	}
+	for(let i=0; i<chartObj2005.length - 1; i++){
+		chartObj2005[i] = [ i+"歳" , m2005[i] , -f2005[i] ];
+	}
+	chartObj2005[100] = ["100~" , m2005[100] , -f2005[100] ];
+	
+	/////// ★★★★　2010　★★★★
+	const str2010ori1 = str2010.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str2010ori2  = unescape(str2010ori1);  //文字列をデコード
+	const obj2010ori = JSON.parse(str2010ori2);  //デコードした文字列をオブジェクト化
+	const str2010s = StatApiMagic(obj2010ori,1); //オブジェクトをシンプル文字列化
+	
+	if (typeof str2010s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse2010 = JSON.parse(str2010s);      //再度オブジェクト化
+		for(let i=0; i<jsonParse2010.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear2010 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse2010[i]['全域・人口集中地区2010']=="全域" && jsonParse2010[i]['年齢4']== j+"歳" && jsonParse2010[i]['国籍2010']=="総数（国籍）"){
+					if(jsonParse2010[i]['男女別2010']=="男"){
+						m2010[j] = Number(jsonParse2010[i]['値']);
+						break;
+					}else if(jsonParse2010[i]['男女別2010']=="女"){
+						f2010[j] = Number(jsonParse2010[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse2010[i]['全域・人口集中地区2010']=="全域" && jsonParse2010[i]['年齢4']== "（再掲）100歳以上" && jsonParse2010[i]['国籍2010']=="総数（国籍）"){
+				if(jsonParse2010[i]['男女別2010']=="男"){
+					m2010[100] = Number(jsonParse2010[i]['値']);
+				}else if(jsonParse2010[i]['男女別2010']=="女"){
+					f2010[100] = Number(jsonParse2010[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse2010[i]['全域・人口集中地区2010']=="全域" && jsonParse2010[i]['年齢4']== "総数（年齢）" && jsonParse2010[i]['国籍2010']=="総数（国籍）"){
+				if(jsonParse2010[i]['男女別2010']=="男"){
+					m2010[101] = Number(jsonParse2010[i]['値']);
+				}else if(jsonParse2010[i]['男女別2010']=="女"){
+					f2010[101] = Number(jsonParse2010[i]['値']);
+				}
+			}
+			// 不詳
+			if(jsonParse2010[i]['全域・人口集中地区2010']=="全域" && jsonParse2010[i]['年齢4']== "不詳" && jsonParse2010[i]['国籍2010']=="総数（国籍）"){
+				if(jsonParse2010[i]['男女別2010']=="男"){
+					m2010[102] = Number(jsonParse2010[i]['値']);
+				}else if(jsonParse2010[i]['男女別2010']=="女"){
+					f2010[102] = Number(jsonParse2010[i]['値']);
+				}
+			}
+		}
+	}
+	for(let i=0; i<chartObj2010.length - 1; i++){
+		chartObj2010[i] = [ i+"歳" , m2010[i] , -f2010[i] ];
+	}
+	chartObj2010[100] = ["100~" , m2010[100] , -f2010[100] ];
+	
+	/////// ★★★★　2015　★★★★
+	const str2015ori1 = str2015.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str2015ori2  = unescape(str2015ori1);  //文字列をデコード
+	const obj2015ori = JSON.parse(str2015ori2);  //デコードした文字列をオブジェクト化
+	const str2015s = StatApiMagic(obj2015ori,1); //オブジェクトをシンプル文字列化
+	
+	if (typeof str2015s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse2015 = JSON.parse(str2015s);      //再度オブジェクト化
+		for(let i=0; i<jsonParse2015.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear2015 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse2015[i]['全域・人口集中地区（2015）']=="全域" && jsonParse2015[i]['年齢_2015']== j+"歳" && jsonParse2015[i]['国籍_2015']=="総数（国籍）"){
+					if(jsonParse2015[i]['男女別_2015']=="男"){
+						m2015[j] = Number(jsonParse2015[i]['値']);
+						break;
+					}else if(jsonParse2015[i]['男女別_2015']=="女"){
+						f2015[j] = Number(jsonParse2015[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse2015[i]['全域・人口集中地区（2015）']=="全域" && jsonParse2015[i]['年齢_2015']== "（再掲）100歳以上" && jsonParse2015[i]['国籍_2015']=="総数（国籍）"){
+				if(jsonParse2015[i]['男女別_2015']=="男"){
+					m2015[100] = Number(jsonParse2015[i]['値']);
+				}else if(jsonParse2015[i]['男女別_2015']=="女"){
+					f2015[100] = Number(jsonParse2015[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse2015[i]['全域・人口集中地区（2015）']=="全域" && jsonParse2015[i]['年齢_2015']== "総数（年齢）" && jsonParse2015[i]['国籍_2015']=="総数（国籍）"){
+				if(jsonParse2015[i]['男女別_2015']=="男"){
+					m2015[101] = Number(jsonParse2015[i]['値']);
+				}else if(jsonParse2015[i]['男女別_2015']=="女"){
+					f2015[101] = Number(jsonParse2015[i]['値']);
+				}
+			}
+			// 不詳
+			if(jsonParse2015[i]['全域・人口集中地区（2015）']=="全域" && jsonParse2015[i]['年齢_2015']== "年齢「不詳」" && jsonParse2015[i]['国籍_2015']=="総数（国籍）"){
+				if(jsonParse2015[i]['男女別_2015']=="男"){
+					m2015[102] = Number(jsonParse2015[i]['値']);
+				}else if(jsonParse2015[i]['男女別_2015']=="女"){
+					f2015[102] = Number(jsonParse2015[i]['値']);
+				}
+			}
+		}
+	}
+	for(let i=0; i<chartObj2015.length - 1; i++){
+		chartObj2015[i] = [ i+"歳" , m2015[i] , -f2015[i] ];
+	}
+	chartObj2015[100] = ["100~" , m2015[100] , -f2015[100] ];	
+	getMaxPopulation();
+}
+
+//グラフのメモリの最大値を取得
+function getMaxPopulation(){	
+	let maxPopulation = 0;
+	for(let i=0; i<101; i++){
+		if(m1980[i] > maxPopulation){maxPopulation = m1980[i];}
+		if(m1985[i] > maxPopulation){maxPopulation = m1985[i];}
+		if(m1990[i] > maxPopulation){maxPopulation = m1990[i];}
+		if(m1995[i] > maxPopulation){maxPopulation = m1995[i];}
+		if(m1980[i] > maxPopulation){maxPopulation = m1980[i];}
+		if(m2000[i] > maxPopulation){maxPopulation = m2000[i];}
+		if(m2005[i] > maxPopulation){maxPopulation = m2005[i];}
+		if(m2010[i] > maxPopulation){maxPopulation = m2010[i];}
+		if(m2015[i] > maxPopulation){maxPopulation = m2015[i];}
+		if(f1980[i] > maxPopulation){maxPopulation = f1980[i];}
+		if(f1985[i] > maxPopulation){maxPopulation = f1985[i];}
+		if(f1990[i] > maxPopulation){maxPopulation = f1990[i];}
+		if(f1995[i] > maxPopulation){maxPopulation = f1995[i];}
+		if(f1980[i] > maxPopulation){maxPopulation = f1980[i];}
+		if(f2000[i] > maxPopulation){maxPopulation = f2000[i];}
+		if(f2005[i] > maxPopulation){maxPopulation = f2005[i];}
+		if(f2010[i] > maxPopulation){maxPopulation = f2010[i];}
+		if(f2015[i] > maxPopulation){maxPopulation = f2015[i];}
+	}
+	if(maxPopulation < 1000){
+		maxPopulation = Math.ceil(maxPopulation / 10) * 10 ;
+	}else if(maxPopulation < 10000){
+		maxPopulation = Math.ceil(maxPopulation / 100) * 100 ;
+	}else if(maxPopulation < 100000){
+		maxPopulation = Math.ceil(maxPopulation / 1000) * 1000 ;
+	}else if(maxPopulation < 1000000){
+		maxPopulation = Math.ceil(maxPopulation / 10000) * 10000 ;
+	}else if(maxPopulation < 10000000){
+		maxPopulation = Math.ceil(maxPopulation / 100000) * 100000 ;
+	}
+	tics1 = - maxPopulation ;       // 1:男最大値
+	tics2 = - (maxPopulation / 2) ; // 2:男中間値
+	tics3 = maxPopulation / 2 ;     // 3:女中間値
+	tics4 = maxPopulation ;         // 4:女最大値
+	yearNum = 1980 ;
+	makePyramid(chartObj1980 , 1980 , 1 );
+}
+
+// ピラミッドの作成（初回）
+function makePyramid(chartObj , drawYear , roop ){
+	google.charts.load('current', {packages: ['corechart', 'bar']});
+	google.charts.setOnLoadCallback(drawPyramid);
+
+	if(window.innerWidth > 750){ //スマホでない
+		titleSize = 30 ;
+		ageTextSize = 14 ;
+		populationTextSize = 12 ;
+		ageVisible = 'out';
+		chartleftSpace = 150 ;
+		chartrightSpace = 150 ;
+	}else{ //スマホ
+		titleSize = 26 ;
+		ageTextSize = 6 ;
+		populationTextSize = 8 ;
+		ageVisible = 'out';
+		chartleftSpace = 30 ;
+		chartrightSpace = 20 ;
+	}
+
+	function drawPyramid() {
+		//データの作成
+		data = new google.visualization.DataTable();
+		data.addColumn('string', '年齢');
+		data.addColumn('number', '男');
+		data.addColumn('number', '女');
+		data.addRows(chartObj); ///////////////ここにデータのオブジェクトが入る
+		//オプションの作成
+		options = {
+			backgroundColor: '#000' ,
+			title: drawYear + '年' , 
+			titleTextStyle: { color: '#a34f8b', fontSize: titleSize },
+			titlePosition: 'in' ,
+			isStacked: true,
+			chartArea: { top:20, bottom:20, left:chartleftSpace, right:chartrightSpace },
+			bar: {groupWidth: 4},
+			hAxis: {
+				format: ';',
+				direction: -1,
+				gridlines: {color: '#444'},
+				minorGridlines: {count: 1 , color: '#222'},
+				ticks: [tics1, tics2, 0, tics3, tics4],
+				textStyle: {fontSize:populationTextSize , color:'#888'}
+			},
+			vAxis: {
+				direction: -1,
+				textStyle: {fontSize: ageTextSize , color:'#888'},
+				textPosition: ageVisible 
+			},
+			series: { 0: {color: '#66CCFF'}, 1: {color: '#FF99FF'} },
+			legend: {
+				//position: 'bottom',
+				position: 'none',
+				maxLines: 3,
+				textStyle: {fontSize:10, color:'#888'}
+			},
+			tooltip: { isHtml: true },
+			focusTarget: 'category',
+			animation: {
+				duration: 200,
+				easing: 'in',
+				startup: true
+			}
+		};
+		//チャートの描画
+		chart = new google.visualization.BarChart(document.getElementById('chart_div'));　// チャートのオブジェクト作成
+		formatter = new google.visualization.NumberFormat({ pattern: '#,###;' }); // ピラミッドの表示の女のマイナスをプラスにする
+		formatter.format(data, 2); // ピラミッドの表示の女のマイナスをプラスにする
+		chart.draw(data, options); // チャートの描画
+	}
+	// チャートの描画が終わったらボタンを可視化
+	document.getElementById("buttonRoop").style.display = "inline-block";
+	document.getElementById("button1980").style.display = "inline-block";
+	document.getElementById("button1985").style.display = "inline-block";
+	document.getElementById("button1990").style.display = "inline-block";
+	document.getElementById("button1995").style.display = "inline-block";
+	document.getElementById("button2000").style.display = "inline-block";
+	document.getElementById("button2005").style.display = "inline-block";
+	document.getElementById("button2010").style.display = "inline-block";
+	document.getElementById("button2015").style.display = "inline-block";
+	document.getElementById("sexText").style.display = "inline";
+	roopPyramidTimer(); //ループタイマースタート
+}
+
+// ループタイマー処理
+function roopPyramidTimer(){
+	// 年を５年送りにする
+	if(yearNum == 2015){
+		yearNum = 1980 ;
+	}else{
+		yearNum = yearNum + 5 ;
+	}
+	const roopSpeed = 1000; //ループするスピードの設定：1000ミリ秒
+	if(yearNum == 1980){
+		// setTimeout用の関数を作成　引数は 1:データ　2:年　3:ループするかどうか（0:しない／1:する）
+		const func1980 = function(){ changeChartData(chartObj1980 , yearNum , 1 ); };
+		// 1000ミリ秒後に関数起動するとともにクリアするときのIDを取得
+		timeID = setTimeout(func1980, roopSpeed); 
+	}else if(yearNum == 1985){
+		const func1985 = function(){ changeChartData(chartObj1985 , yearNum , 1 ); };
+		timeID = setTimeout(func1985, roopSpeed);
+	}else if(yearNum == 1990){
+		const func1990 = function(){ changeChartData(chartObj1990 , yearNum , 1 ); };
+		timeID = setTimeout(func1990, roopSpeed);
+	}else if(yearNum == 1995){
+		const func1995 = function(){ changeChartData(chartObj1995 , yearNum , 1 ); };
+		timeID = setTimeout(func1995, roopSpeed);
+	}else if(yearNum == 2000){
+		const func2000 = function(){ changeChartData(chartObj2000 , yearNum , 1 ); };
+		timeID = setTimeout(func2000, roopSpeed);
+	}else if(yearNum == 2005){
+		const func2005 = function(){ changeChartData(chartObj2005 , yearNum , 1 ); };
+		timeID = setTimeout(func2005, roopSpeed);
+	}else if(yearNum == 2010){
+		const func2010 = function(){ changeChartData(chartObj2010 , yearNum , 1 ); };
+		timeID = setTimeout(func2010, roopSpeed);
+	}else if(yearNum == 2015){
+		const func2015 = function(){ changeChartData(chartObj2015 , yearNum , 1 ); };
+		timeID = setTimeout(func2015, roopSpeed);
+	}
+}
+
+// チャートの値を更新して再描画
+function changeChartData(chartObjChange , yearNumChange , roopFlag){
+	data = new google.visualization.DataTable();
+	data.addColumn('string', 'City');
+	data.addColumn('number', '男');
+	data.addColumn('number', '女');
+	data.addRows(chartObjChange); ///////////////ここにデータのオブジェクトが入る
+	options.title = yearNumChange + "年";
+	formatter.format(data, 2);
+	chart.draw(data, options);
+	//ループする場合は1で，roopPyramidTimer関数を呼ぶ
+	if(roopFlag == 1){
+		roopPyramidTimer();
+	}
+}
+
+// 下のボタンを押したときの処理
+function onButtonClick(yearButtonNum){
+	clearTimeout(timeID); //タイマーをストップ
+	if(yearButtonNum == 1980){	
+		changeChartData(chartObj1980 , 1980 , 0 ); //ループしないので0
+	}else if(yearButtonNum == 1985){	
+		changeChartData(chartObj1985 , 1985 , 0 );
+	}else if(yearButtonNum == 1990){		
+		changeChartData(chartObj1990 , 1990 , 0 );
+	}else if(yearButtonNum == 1995){		
+		changeChartData(chartObj1995 , 1995 , 0 );
+	}else if(yearButtonNum == 2000){		
+		changeChartData(chartObj2000 , 2000 , 0 );
+	}else if(yearButtonNum == 2005){		
+		changeChartData(chartObj2005 , 2005 , 0 );
+	}else if(yearButtonNum == 2010){		
+		changeChartData(chartObj2010 , 2010 , 0 );
+	}else if(yearButtonNum == 2015){		
+		changeChartData(chartObj2015 , 2015 , 0 );
+	}else if(yearButtonNum == 9999){
+		yearNum = 1975 ; //1975年＋5年で1980年になる
+		roopPyramidTimer() ;
+	}
+}
+
+// 地域を選択し直した場合リセット（ドロップダウンリストを変更したとき　selectArea.js ）
+function resetArea(){
+	clearTimeout(timeID);//タイマーをストップ
+	//既にチャートのオブジェクトがある場合はクリア
+	if (typeof chart !== "undefined") {
+		chart.clearChart(); 
+	}
+	if(window.innerWidth > 750){ //スマホでない
+		document.getElementById("chart_div").innerHTML = '<img src="pyramid.jpg"/>';
+	}else{ //スマホ
+		document.getElementById("chart_div").innerHTML = '<img src="pyramidS.jpg"/>';
+	}
+	document.getElementById("buttonRoop").style.display = "none";
+	document.getElementById("button1980").style.display = "none";
+	document.getElementById("button1985").style.display = "none";
+	document.getElementById("button1990").style.display = "none";
+	document.getElementById("button1995").style.display = "none";
+	document.getElementById("button2000").style.display = "none";
+	document.getElementById("button2005").style.display = "none";
+	document.getElementById("button2010").style.display = "none";
+	document.getElementById("button2015").style.display = "none";
+	document.getElementById("sexText").style.display = "none";
+}
+
+// 地域を確定したとき（ ローディングアニメ　selectArea.js ）
+function onSelectArea(){
+
+	// 「選んでください」を選んだときの対策
+	let pref;
+	let city;
+	if (typeof document.myForm1.prefField !== "undefined") { 
+		var indexPref = document.myForm1.prefField.selectedIndex; 
+		pref = document.myForm1.prefField.options[indexPref].value; 
+	}
+	if (typeof document.myForm1.cityField !== "undefined") { 
+		var indexCity = document.myForm1.cityField.selectedIndex; 
+		city = document.myForm1.cityField.options[indexCity].value; 
+	}
+	if(pref === "" || city === ""){
+		// 「選んでください」を選んだときはリセット
+		resetArea();
+	}else{
+		document.getElementById("chart_div").innerHTML = "<br><br><br><br><br><br><br><div id='waitArea' class='loader'></div>";
+		document.getElementById("buttonRoop").style.display = "none";
+		document.getElementById("button1980").style.display = "none";
+		document.getElementById("button1985").style.display = "none";
+		document.getElementById("button1990").style.display = "none";
+		document.getElementById("button1995").style.display = "none";
+		document.getElementById("button2000").style.display = "none";
+		document.getElementById("button2005").style.display = "none";
+		document.getElementById("button2010").style.display = "none";
+		document.getElementById("button2015").style.display = "none";
+		document.getElementById("sexText").style.display = "none";
+		get1980data();
+	}
+}
+
+//検証用関数
+function kensyo(){
+	//var str001 = JSON.stringify(f1980,undefined,1);
+	//var str001 = JSON.stringify(chartObj1980,undefined,1);
+	//document.getElementById('box1980').innerText = str001;
+	//for(let i=0; i<m1980.length; i++){ alert("男"+i+"歳："+m1980[i]+"　　女"+i+"歳："+f1980[i]); }
+	alert(window.innerWidth);
+}
+</script>
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-151390134-1"></script>
+<script>
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'UA-151390134-1');
+</script>
+
+</head>
+<body>
+
+<div class="parent">
+  <div class="inner">
+
+<div>
+	<form id="form1" name="myForm1" class="selectfile">
+	<select id='selectAid'  class="select0" name='statsField' onChange="changeprefField()"> 
+	<option value="" selected>地域を選択してください</option>
+	<option value="00000">日本（全国）</option>
+	<option value="4">都道府県</option>
+	<option value="5">市区町村・行政区</option>
+	</select>
+	<label id="prefField"></label>
+	<label id="cityField"></label>
+	</form>
+</div>
+<div id="sexArea"><span id="sexText" style="display:none;">男　 　女</span></div>
+<div id="chart_div"></div>
+<div class="buttonBox">
+	<input id="button1980" class="yearButtonClass" style="display:none;" type="button" value="1980" onclick="onButtonClick(1980)">
+	<input id="button1985" class="yearButtonClass" style="display:none;" type="button" value="1985" onclick="onButtonClick(1985)">
+	<input id="button1990" class="yearButtonClass" style="display:none;" type="button" value="1990" onclick="onButtonClick(1990)">
+	<input id="button1995" class="yearButtonClass" style="display:none;" type="button" value="1995" onclick="onButtonClick(1995)">
+	<input id="button2000" class="yearButtonClass" style="display:none;" type="button" value="2000" onclick="onButtonClick(2000)">
+	<input id="button2005" class="yearButtonClass" style="display:none;" type="button" value="2005" onclick="onButtonClick(2005)">
+	<input id="button2010" class="yearButtonClass" style="display:none;" type="button" value="2010" onclick="onButtonClick(2010)">
+	<input id="button2015" class="yearButtonClass" style="display:none;" type="button" value="2015" onclick="onButtonClick(2015)">
+	<input id="buttonRoop" class="roopButtonClass" style="display:none;" type="button" value="ループ" onclick="onButtonClick(9999)">
+</div>
+<div class="footerTextClass">
+	<p style="text-align:center;"><a href="">GitHub</a></p>
+</div>
+
+<!-- /////////////  以下検証用  ///////////////
+<input id="excuteButton" type="button" value="検証" onclick="kensyo()">
+<div class="boxContainer">
+	<div class="box" id="box1980">1980</div>
+	<div class="box" id="box1985">1985</div>
+	<div class="box" id="box1990">1990</div>
+	<div class="box" id="box1995">1995</div>
+	<div class="box" id="box2000">2000</div>
+	<div class="box" id="box2005">2005</div>
+	<div class="box" id="box2010">2010</div>
+	<div class="box" id="box2015">2015</div>
+</div>
+-->
+ 
+  </div> 
+</div>
+
+</body>
+</html>
