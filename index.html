@@ -953,6 +953,11 @@ function onSelectArea(){
 		// 「選んでください」を選んだときはリセット
 		resetArea();
 	}else{
+		clearTimeout(timeID);//タイマーをストップ
+		//既にチャートのオブジェクトがある場合はクリア
+		if (typeof chart !== "undefined") {
+			chart.clearChart(); 
+		}
 		document.getElementById("chart_div").innerHTML = "<br><br><br><br><br><br><br><div id='waitArea' class='loader'></div>";
 		document.getElementById("buttonRoop").style.display = "none";
 		document.getElementById("button1980").style.display = "none";
