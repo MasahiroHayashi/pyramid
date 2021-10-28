@@ -5,3 +5,6 @@
 
 ## デモサイト
 [https://www.mirko.jp/pyramid/](https://www.mirko.jp/pyramid/)
+
+## 国勢調査オープンデータ
+[https://www.mirko.jp/pyramid/data/](https://www.mirko.jp/pyramid/data/)
