@@ -6,5 +6,5 @@
 ## デモサイト
 [https://www.mirko.jp/pyramid/](https://www.mirko.jp/pyramid/)
 
-## 国勢調査オープンデータ
+## 国勢調査年齢別人口のきれいなデータ
 [https://www.mirko.jp/pyramid/data/](https://www.mirko.jp/pyramid/data/)
