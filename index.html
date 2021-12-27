@@ -84,6 +84,9 @@ let formatter ; // フォーマッター（ピラミッドの表示の女のマ�
 let selectArea ; 
 let areaName ; 
 let appID = "dcb8af460c73985dd0352d428facfa3011ef2d71" ;
+//色
+let backcolor = "B" ; //白は"W"
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -244,12 +247,28 @@ function get2015data(){
 	XMLhttpObject.onreadystatechange = function(){
 		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
 			str2015 = XMLhttpObject.responseText; 
-			convertSimpleJson();
+			get2020data();
 		}
 	};
 	XMLhttpObject.send(null);
 }
 
+function get2020data(){
+	let req = 'https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData?';
+	req += 'statsDataId=0003445139';
+	req += '&cdArea='+ selectArea ;
+	req += '&limit=830';
+	req += '&appId='+ appID ;
+	var XMLhttpObject = new XMLHttpRequest();
+	XMLhttpObject.open('GET',req,true);
+	XMLhttpObject.onreadystatechange = function(){
+		if (XMLhttpObject.readyState === 4 && XMLhttpObject.status === 200){
+			str2020 = XMLhttpObject.responseText; 
+			convertSimpleJson();
+		}
+	};
+	XMLhttpObject.send(null);
+}
 //半角文字→全角文字の関数
 function zenkaku2Hankaku(str) {
 	return str.replace(/[A-Za-z0-9]/g, function(s) {
@@ -702,6 +721,60 @@ function convertSimpleJson(){
 		chartObj2015[i] = [ i+"歳" , m2015[i] , -f2015[i] ];
 	}
 	chartObj2015[100] = ["100~" , m2015[100] , -f2015[100] ];	
+
+	/////// ★★★★　2020　★★★★
+	const str2020ori1 = str2020.replace(/\\/g ,"%");  //正規表現でバックスラッシュ(\)を「%」に置換（これをしないとデコードできない）
+	const str2020ori2  = unescape(str2020ori1);  //文字列をデコード
+	const obj2020ori = JSON.parse(str2020ori2);  //デコードした文字列をオブジェクト化
+	const str2020s = StatApiMagic(obj2020ori,1); //オブジェクトをシンプル文字列化
+	
+	if (typeof str2020s !== "undefined") { // データがないやつの対策（当時まだなかった市区町村）
+		const jsonParse2020 = JSON.parse(str2020s);      //再度オブジェクト化
+		for(let i=0; i<jsonParse2020.length; i++){
+			// 0～99歳まで
+			for(let j=0; j<100; j++){
+				zenYear2020 = zenkaku2Hankaku(String(j)) + "歳" ;
+				if(jsonParse2020[i]['年齢']== j+"歳" && jsonParse2020[i]['国籍総数か日本人']=="国籍総数"){
+					if(jsonParse2020[i]['男女']=="男"){
+						m2020[j] = Number(jsonParse2020[i]['値']);
+						break;
+					}else if(jsonParse2020[i]['男女']=="女"){
+						f2020[j] = Number(jsonParse2020[i]['値']);
+						break;
+					}
+				}
+			}
+			// 100歳以上
+			if(jsonParse2020[i]['年齢']== "100歳以上" && jsonParse2020[i]['国籍総数か日本人']=="国籍総数"){
+				if(jsonParse2020[i]['男女']=="男"){
+					m2020[100] = Number(jsonParse2020[i]['値']);
+				}else if(jsonParse2020[i]['男女']=="女"){
+					f2020[100] = Number(jsonParse2020[i]['値']);
+				}
+			}
+			// 総数
+			if(jsonParse2020[i]['年齢']== "総数" && jsonParse2020[i]['国籍総数か日本人']=="国籍総数"){
+				if(jsonParse2020[i]['男女']=="男"){
+					m2020[101] = Number(jsonParse2020[i]['値']);
+				}else if(jsonParse2020[i]['男女']=="女"){
+					f2020[101] = Number(jsonParse2020[i]['値']);
+				}
+			}
+			// 不詳
+			if(jsonParse2020[i]['年齢']== "年齢「不詳」" && jsonParse2020[i]['国籍総数か日本人']=="国籍総数"){
+				if(jsonParse2020[i]['男女']=="男"){
+					m2020[102] = Number(jsonParse2020[i]['値']);
+				}else if(jsonParse2020[i]['男女']=="女"){
+					f2020[102] = Number(jsonParse2020[i]['値']);
+				}
+			}
+		}
+	}
+	for(let i=0; i<chartObj2020.length - 1; i++){
+		chartObj2020[i] = [ i+"歳" , m2020[i] , -f2020[i] ];
+	}
+	chartObj2020[100] = ["100~" , m2020[100] , -f2020[100] ];
+
 	getMaxPopulation();
 }
 
@@ -718,6 +791,7 @@ function getMaxPopulation(){
 		if(m2005[i] > maxPopulation){maxPopulation = m2005[i];}
 		if(m2010[i] > maxPopulation){maxPopulation = m2010[i];}
 		if(m2015[i] > maxPopulation){maxPopulation = m2015[i];}
+		if(m2020[i] > maxPopulation){maxPopulation = m2020[i];}
 		if(f1980[i] > maxPopulation){maxPopulation = f1980[i];}
 		if(f1985[i] > maxPopulation){maxPopulation = f1985[i];}
 		if(f1990[i] > maxPopulation){maxPopulation = f1990[i];}
@@ -727,6 +801,7 @@ function getMaxPopulation(){
 		if(f2005[i] > maxPopulation){maxPopulation = f2005[i];}
 		if(f2010[i] > maxPopulation){maxPopulation = f2010[i];}
 		if(f2015[i] > maxPopulation){maxPopulation = f2015[i];}
+		if(f2020[i] > maxPopulation){maxPopulation = f2020[i];}
 	}
 	if(maxPopulation < 1000){
 		maxPopulation = Math.ceil(maxPopulation / 10) * 10 ;
@@ -776,42 +851,84 @@ function makePyramid(chartObj , drawYear , roop ){
 		data.addColumn('number', '女');
 		data.addRows(chartObj); ///////////////ここにデータのオブジェクトが入る
 		//オプションの作成
-		options = {
-			backgroundColor: '#000' ,
-			title: drawYear + '年' , 
-			titleTextStyle: { color: '#a34f8b', fontSize: titleSize },
-			titlePosition: 'in' ,
-			isStacked: true,
-			chartArea: { top:20, bottom:20, left:chartleftSpace, right:chartrightSpace },
-			bar: {groupWidth: 4},
-			hAxis: {
-				format: ';',
-				direction: -1,
-				gridlines: {color: '#444'},
-				minorGridlines: {count: 1 , color: '#222'},
-				ticks: [tics1, tics2, 0, tics3, tics4],
-				textStyle: {fontSize:populationTextSize , color:'#888'}
-			},
-			vAxis: {
-				direction: -1,
-				textStyle: {fontSize: ageTextSize , color:'#888'},
-				textPosition: ageVisible 
-			},
-			series: { 0: {color: '#66CCFF'}, 1: {color: '#FF99FF'} },
-			legend: {
-				//position: 'bottom',
-				position: 'none',
-				maxLines: 3,
-				textStyle: {fontSize:10, color:'#888'}
-			},
-			tooltip: { isHtml: true },
-			focusTarget: 'category',
-			animation: {
-				duration: 200,
-				easing: 'in',
-				startup: true
-			}
-		};
+		//黒背景パターン
+		if(backcolor == "B"){
+			options = {
+				backgroundColor: '#000' ,
+				title: drawYear + '年' , 
+				titleTextStyle: { color: '#a34f8b', fontSize: titleSize },
+				titlePosition: 'in' ,
+				isStacked: true,
+				chartArea: { top:20, bottom:20, left:chartleftSpace, right:chartrightSpace },
+				bar: {groupWidth: 4},
+				hAxis: {
+					format: ';',
+					direction: -1,
+					gridlines: {color: '#444'},
+					minorGridlines: {count: 1 , color: '#222'},
+					ticks: [tics1, tics2, 0, tics3, tics4],
+					textStyle: {fontSize:populationTextSize , color:'#888'}
+				},
+				vAxis: {
+					direction: -1,
+					textStyle: {fontSize: ageTextSize , color:'#888'},
+					textPosition: ageVisible 
+				},
+				series: { 0: {color: '#66CCFF'}, 1: {color: '#FF99FF'} },
+				legend: {
+					//position: 'bottom',
+					position: 'none',
+					maxLines: 3,
+					textStyle: {fontSize:10, color:'#888'}
+				},
+				tooltip: { isHtml: true },
+				focusTarget: 'category',
+				animation: {
+					duration: 200,
+					easing: 'in',
+					startup: true
+				}
+			};
+
+		//白背景パターン
+		}else{
+			options = {
+				backgroundColor: '#fff' ,
+				title: drawYear + '年' , 
+				titleTextStyle: { color: '#191970', fontSize: titleSize },
+				titlePosition: 'in' ,
+				isStacked: true,
+				chartArea: { top:20, bottom:20, left:chartleftSpace, right:chartrightSpace },
+				bar: {groupWidth: 4},
+				hAxis: {
+					format: ';',
+					direction: -1,
+					gridlines: {color: '#444'},
+					minorGridlines: {count: 1 , color: '#222'},
+					ticks: [tics1, tics2, 0, tics3, tics4],
+					textStyle: {fontSize:populationTextSize , color:'#444'}
+				},
+				vAxis: {
+					direction: -1,
+					textStyle: {fontSize: ageTextSize , color:'#444'},
+					textPosition: ageVisible 
+				},
+				series: { 0: {color: '#1e90ff'}, 1: {color: '#da70d6'} },
+				legend: {
+					//position: 'bottom',
+					position: 'none',
+					maxLines: 3,
+					textStyle: {fontSize:10, color:'#444'}
+				},
+				tooltip: { isHtml: true },
+				focusTarget: 'category',
+				animation: {
+					duration: 200,
+					easing: 'in',
+					startup: true
+				}
+			};
+		}
 		//チャートの描画
 		chart = new google.visualization.BarChart(document.getElementById('chart_div'));　// チャートのオブジェクト作成
 		formatter = new google.visualization.NumberFormat({ pattern: '#,###;' }); // ピラミッドの表示の女のマイナスをプラスにする
@@ -819,6 +936,7 @@ function makePyramid(chartObj , drawYear , roop ){
 		chart.draw(data, options); // チャートの描画
 	}
 	// チャートの描画が終わったらボタンを可視化
+	document.getElementById("buttonColor").style.display = "inline-block";
 	document.getElementById("buttonRoop").style.display = "inline-block";
 	document.getElementById("button1980").style.display = "inline-block";
 	document.getElementById("button1985").style.display = "inline-block";
@@ -828,6 +946,7 @@ function makePyramid(chartObj , drawYear , roop ){
 	document.getElementById("button2005").style.display = "inline-block";
 	document.getElementById("button2010").style.display = "inline-block";
 	document.getElementById("button2015").style.display = "inline-block";
+	document.getElementById("button2020").style.display = "inline-block";
 	document.getElementById("sexText").style.display = "inline";
 	roopPyramidTimer(); //ループタイマースタート
 }
@@ -835,7 +954,7 @@ function makePyramid(chartObj , drawYear , roop ){
 // ループタイマー処理
 function roopPyramidTimer(){
 	// 年を５年送りにする
-	if(yearNum == 2015){
+	if(yearNum == 2020){
 		yearNum = 1980 ;
 	}else{
 		yearNum = yearNum + 5 ;
@@ -867,6 +986,9 @@ function roopPyramidTimer(){
 	}else if(yearNum == 2015){
 		const func2015 = function(){ changeChartData(chartObj2015 , yearNum , 1 ); };
 		timeID = setTimeout(func2015, roopSpeed);
+	}else if(yearNum == 2020){
+		const func2020 = function(){ changeChartData(chartObj2020 , yearNum , 1 ); };
+		timeID = setTimeout(func2020, roopSpeed);
 	}
 }
 
@@ -905,6 +1027,8 @@ function onButtonClick(yearButtonNum){
 		changeChartData(chartObj2010 , 2010 , 0 );
 	}else if(yearButtonNum == 2015){		
 		changeChartData(chartObj2015 , 2015 , 0 );
+	}else if(yearButtonNum == 2020){		
+		changeChartData(chartObj2020 , 2020 , 0 );
 	}else if(yearButtonNum == 9999){
 		yearNum = 1975 ; //1975年＋5年で1980年になる
 		roopPyramidTimer() ;
@@ -923,6 +1047,7 @@ function resetArea(){
 	}else{ //スマホ
 		document.getElementById("chart_div").innerHTML = '<img src="pyramidS.jpg"/>';
 	}
+	document.getElementById("buttonColor").style.display = "none";
 	document.getElementById("buttonRoop").style.display = "none";
 	document.getElementById("button1980").style.display = "none";
 	document.getElementById("button1985").style.display = "none";
@@ -932,7 +1057,36 @@ function resetArea(){
 	document.getElementById("button2005").style.display = "none";
 	document.getElementById("button2010").style.display = "none";
 	document.getElementById("button2015").style.display = "none";
+	document.getElementById("button2020").style.display = "none";
 	document.getElementById("sexText").style.display = "none";
+}
+
+// 背景色の変更
+function changeColor(){
+	clearTimeout(timeID);//タイマーをストップ
+	//既にチャートのオブジェクトがある場合はクリア
+	if (typeof chart !== "undefined") {
+		chart.clearChart(); 
+	}
+	//色フラグ変更
+	if(backcolor == "B"){
+		backcolor = "W";
+	}else{
+		backcolor = "B";
+	}
+	document.getElementById("buttonColor").style.display = "none";
+	document.getElementById("buttonRoop").style.display = "none";
+	document.getElementById("button1980").style.display = "none";
+	document.getElementById("button1985").style.display = "none";
+	document.getElementById("button1990").style.display = "none";
+	document.getElementById("button1995").style.display = "none";
+	document.getElementById("button2000").style.display = "none";
+	document.getElementById("button2005").style.display = "none";
+	document.getElementById("button2010").style.display = "none";
+	document.getElementById("button2015").style.display = "none";
+	document.getElementById("button2020").style.display = "none";
+	document.getElementById("sexText").style.display = "none";
+	getMaxPopulation();
 }
 
 // 地域を確定したとき（ ローディングアニメ　selectArea.js ）
@@ -959,6 +1113,7 @@ function onSelectArea(){
 			chart.clearChart(); 
 		}
 		document.getElementById("chart_div").innerHTML = "<br><br><br><br><br><br><br><div id='waitArea' class='loader'></div>";
+		document.getElementById("buttonColor").style.display = "none";
 		document.getElementById("buttonRoop").style.display = "none";
 		document.getElementById("button1980").style.display = "none";
 		document.getElementById("button1985").style.display = "none";
@@ -968,6 +1123,7 @@ function onSelectArea(){
 		document.getElementById("button2005").style.display = "none";
 		document.getElementById("button2010").style.display = "none";
 		document.getElementById("button2015").style.display = "none";
+		document.getElementById("button2020").style.display = "none";
 		document.getElementById("sexText").style.display = "none";
 		get1980data();
 	}
@@ -1021,7 +1177,9 @@ function kensyo(){
 	<input id="button2005" class="yearButtonClass" style="display:none;" type="button" value="2005" onclick="onButtonClick(2005)">
 	<input id="button2010" class="yearButtonClass" style="display:none;" type="button" value="2010" onclick="onButtonClick(2010)">
 	<input id="button2015" class="yearButtonClass" style="display:none;" type="button" value="2015" onclick="onButtonClick(2015)">
+	<input id="button2020" class="yearButtonClass" style="display:none;" type="button" value="2020" onclick="onButtonClick(2020)">
 	<input id="buttonRoop" class="roopButtonClass" style="display:none;" type="button" value="ループ" onclick="onButtonClick(9999)">
+	<input id="buttonColor" class="roopButtonClass" style="display:none;" type="button" value="色変更" onclick="changeColor()">
 </div>
 <div class="footerTextClass">
 	<p style="text-align:center;"><a href="https://github.com/MasahiroHayashi/pyramid">GitHub</a>　 <a href="https://www.mirko.jp/pyramid/data/">data</a></p>
@@ -1038,6 +1196,7 @@ function kensyo(){
 	<div class="box" id="box2005">2005</div>
 	<div class="box" id="box2010">2010</div>
 	<div class="box" id="box2015">2015</div>
+	<div class="box" id="box2020">2020</div>
 </div>
 -->
  
