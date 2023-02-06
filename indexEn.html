@@ -1,6 +1,6 @@
 ﻿<!--
 //////////////////////////////////////////////////////////////////////
-//////*!                 全国人口ピラミッダー                 !*//////
+//////*!        Population Pyramid by Region in Japan         !*//////
 //////*!                                                      !*//////
 //////*!          Copyright(c)2021  Masahiro Hayashi          !*//////
 //////*!      https://github.com/MasahiroHayashi/pyramid      !*//////
@@ -12,35 +12,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0" />
-<meta name="description" content="全国の年齢各歳別の人口ピラミッド（1980～2015）を作成するWEBアプリケーション" />
-<meta name="keywords" content="統計,e-stat,API,人口ピラミッド" />
+<meta name="description" content="Web application to create a national population pyramid (1980-2015) for each age group" />
 <meta name="google-site-verification" content="HAbYWSXLb0DE_SK38gagjV3FDd2uxkicP5acUi0AVpY" />
 <link rel="canonical" href="https://www.mirko.jp/pyramid/">
 <!-- ogp -->
-<meta property="og:site_name" content="全国人口ピラミッダー" />
-<meta property="og:title" content="全国人口ピラミッダー" />
+<meta property="og:site_name" content="Population Pyramid by Region in Japan" />
+<meta property="og:title" content="Population Pyramid by Region in Japan" />
 <meta property="og:url" content="https://www.mirko.jp/pyramid/" />
 <meta property="og:image" content="https://www.mirko.jp/pyramid/ogp_card.jpg" />
-<meta property="og:description" content="全国の年齢各歳別の人口ピラミッド（1980～2015）を作成するWEBアプリケーション" />
+<meta property="og:description" content="Web application to create a national population pyramid (1980-2015) for each age group" />
 <meta property="og:type" content="website" />
 <!-- facebook -->
 <meta property="fb:app_id" content="398953874192431" />
 <!-- twitter card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:url" content="https://www.mirko.jp/pyramid/" />
-<meta name="twitter:site" content="全国人口ピラミッダー">
+<meta name="twitter:site" content="Population Pyramid by Region in Japan">
 <meta name="twitter:creator" content="@catfishm2">
-<meta name="twitter:title" content="全国人口ピラミッダー" />
-<meta name="twitter:description" content="全国の年齢各歳別の人口ピラミッド（1980～2015）を作成するWEBアプリケーション">
+<meta name="twitter:title" content="Population Pyramid by Region in Japan" />
+<meta name="twitter:description" content="Web application to create a national population pyramid (1980-2015) for each age group">
 <meta name="twitter:image:src" content="https://www.mirko.jp/pyramid/ogp_card.jpg">
 
-<title>全国人口ピラミッダー</title>
+<title>Population Pyramid by Region in Japan</title>
 <link rel="stylesheet" type="text/css" href="loading.css">
 <link rel="stylesheet" type="text/css" href="index.css">
 <script type="text/javascript" src="statapimagic-1.5.js"></script>
-<script type="text/javascript" src="popj.js"></script>
+<script type="text/javascript" src="popjEn.js"></script>
 <script type="text/javascript" src="loader.js"></script>
-<script type="text/javascript" src="selectArea.js"></script>
+<script type="text/javascript" src="selectAreaEn.js"></script>
 <script type="text/javascript">
 
 //★★★★★★★★★★★★★★★★　グローバル変数　★★★★★★★★★★★★★★★★
@@ -94,9 +93,9 @@ window.addEventListener("load",loadFrontImg,false);
 
 function loadFrontImg(){
 	if(window.innerWidth > 750){ //スマホでない
-		document.getElementById("chart_div").innerHTML = '<img src="pyramid.jpg"/>';
+		document.getElementById("chart_div").innerHTML = '<img src="pyramidEn.jpg"/>';
 	}else{ //スマホ
-		document.getElementById("chart_div").innerHTML = '<img src="pyramidS.jpg"/>';
+		document.getElementById("chart_div").innerHTML = '<img src="pyramidSEn.jpg"/>';
 	}
 }
 
@@ -112,7 +111,7 @@ function get1980data(){
 	}
 	//日本全体だった場合
 	if(selectArea==00000){
-		areaName = "日本全体" ;
+		areaName = "Japan as a whole" ;
 		populationJapan(); // popj.js内に関数あり
 		getMaxPopulation();
 		return ;
@@ -343,7 +342,7 @@ function convertSimpleJson(){
 	let yearAllm = 0 ;
 	let yearAllf = 0 ;
 	for(let i=0; i<chartObj1980.length - 1; i++){
-		chartObj1980[i] = [ i+"歳" , m1980[i] , -f1980[i] ];
+		chartObj1980[i] = [ i+"yrs" , m1980[i] , -f1980[i] ];
 		yearAllm = yearAllm + m1980[i] ;
 		yearAllf = yearAllf + f1980[i] ;
 	}
@@ -396,7 +395,7 @@ function convertSimpleJson(){
 	yearAllm = 0 ;
 	yearAllf = 0 ;
 	for(let i=0; i<chartObj1985.length - 1; i++){
-		chartObj1985[i] = [ i+"歳" , m1985[i] , -f1985[i] ];
+		chartObj1985[i] = [ i+"yrs" , m1985[i] , -f1985[i] ];
 		yearAllm = yearAllm + m1985[i] ;
 		yearAllf = yearAllf + f1985[i] ;
 	}
@@ -453,7 +452,7 @@ function convertSimpleJson(){
 		}
 	}
 	for(let i=0; i<chartObj1990.length - 1; i++){
-		chartObj1990[i] = [ i+"歳" , m1990[i] , -f1990[i] ];
+		chartObj1990[i] = [ i+"yrs" , m1990[i] , -f1990[i] ];
 	}
 	chartObj1990[100] = ["100~" , m1990[100] , -f1990[100] ];
 		
@@ -506,7 +505,7 @@ function convertSimpleJson(){
 		}
 	}
 	for(let i=0; i<chartObj1995.length - 1; i++){
-		chartObj1995[i] = [ i+"歳" , m1995[i] , -f1995[i] ];
+		chartObj1995[i] = [ i+"yrs" , m1995[i] , -f1995[i] ];
 	}
 	chartObj1995[100] = ["100~" , m1995[100] , -f1995[100] ];
 	
@@ -559,7 +558,7 @@ function convertSimpleJson(){
 		}
 	}
 	for(let i=0; i<chartObj2000.length - 1; i++){
-		chartObj2000[i] = [ i+"歳" , m2000[i] , -f2000[i] ];
+		chartObj2000[i] = [ i+"yrs" , m2000[i] , -f2000[i] ];
 	}
 	chartObj2000[100] = ["100~" , m2000[100] , -f2000[100] ];
 
@@ -612,7 +611,7 @@ function convertSimpleJson(){
 		}
 	}
 	for(let i=0; i<chartObj2005.length - 1; i++){
-		chartObj2005[i] = [ i+"歳" , m2005[i] , -f2005[i] ];
+		chartObj2005[i] = [ i+"yrs" , m2005[i] , -f2005[i] ];
 	}
 	chartObj2005[100] = ["100~" , m2005[100] , -f2005[100] ];
 	
@@ -665,7 +664,7 @@ function convertSimpleJson(){
 		}
 	}
 	for(let i=0; i<chartObj2010.length - 1; i++){
-		chartObj2010[i] = [ i+"歳" , m2010[i] , -f2010[i] ];
+		chartObj2010[i] = [ i+"yrs" , m2010[i] , -f2010[i] ];
 	}
 	chartObj2010[100] = ["100~" , m2010[100] , -f2010[100] ];
 	
@@ -718,7 +717,7 @@ function convertSimpleJson(){
 		}
 	}
 	for(let i=0; i<chartObj2015.length - 1; i++){
-		chartObj2015[i] = [ i+"歳" , m2015[i] , -f2015[i] ];
+		chartObj2015[i] = [ i+"yrs" , m2015[i] , -f2015[i] ];
 	}
 	chartObj2015[100] = ["100~" , m2015[100] , -f2015[100] ];	
 
@@ -771,7 +770,7 @@ function convertSimpleJson(){
 		}
 	}
 	for(let i=0; i<chartObj2020.length - 1; i++){
-		chartObj2020[i] = [ i+"歳" , m2020[i] , -f2020[i] ];
+		chartObj2020[i] = [ i+"yrs" , m2020[i] , -f2020[i] ];
 	}
 	chartObj2020[100] = ["100~" , m2020[100] , -f2020[100] ];
 
@@ -846,16 +845,16 @@ function makePyramid(chartObj , drawYear , roop ){
 	function drawPyramid() {
 		//データの作成
 		data = new google.visualization.DataTable();
-		data.addColumn('string', '年齢');
-		data.addColumn('number', '男');
-		data.addColumn('number', '女');
+		data.addColumn('string', 'age');
+		data.addColumn('number', 'Male');
+		data.addColumn('number', 'Female');
 		data.addRows(chartObj); ///////////////ここにデータのオブジェクトが入る
 		//オプションの作成
 		//黒背景パターン
 		if(backcolor == "B"){
 			options = {
 				backgroundColor: '#000' ,
-				title: drawYear + '年' , 
+				title: drawYear + ' ' , 
 				titleTextStyle: { color: '#a34f8b', fontSize: titleSize },
 				titlePosition: 'in' ,
 				isStacked: true,
@@ -894,7 +893,7 @@ function makePyramid(chartObj , drawYear , roop ){
 		}else{
 			options = {
 				backgroundColor: '#fff' ,
-				title: drawYear + '年' , 
+				title: drawYear + ' ' , 
 				titleTextStyle: { color: '#191970', fontSize: titleSize },
 				titlePosition: 'in' ,
 				isStacked: true,
@@ -995,11 +994,11 @@ function roopPyramidTimer(){
 // チャートの値を更新して再描画
 function changeChartData(chartObjChange , yearNumChange , roopFlag){
 	data = new google.visualization.DataTable();
-	data.addColumn('string', 'City');
-	data.addColumn('number', '男');
-	data.addColumn('number', '女');
+	data.addColumn('string', 'age');
+	data.addColumn('number', 'Male');
+	data.addColumn('number', 'Female');
 	data.addRows(chartObjChange); ///////////////ここにデータのオブジェクトが入る
-	options.title = yearNumChange + "年";
+	options.title = yearNumChange + " ";
 	formatter.format(data, 2);
 	chart.draw(data, options);
 	//ループする場合は1で，roopPyramidTimer関数を呼ぶ
@@ -1043,9 +1042,9 @@ function resetArea(){
 		chart.clearChart(); 
 	}
 	if(window.innerWidth > 750){ //スマホでない
-		document.getElementById("chart_div").innerHTML = '<img src="pyramid.jpg"/>';
+		document.getElementById("chart_div").innerHTML = '<img src="pyramidEn.jpg"/>';
 	}else{ //スマホ
-		document.getElementById("chart_div").innerHTML = '<img src="pyramidS.jpg"/>';
+		document.getElementById("chart_div").innerHTML = '<img src="pyramidSEn.jpg"/>';
 	}
 	document.getElementById("buttonColor").style.display = "none";
 	document.getElementById("buttonRoop").style.display = "none";
@@ -1157,16 +1156,16 @@ function kensyo(){
 <div>
 	<form id="form1" name="myForm1" class="selectfile">
 	<select id='selectAid'  class="select0" name='statsField' onChange="changeprefField()"> 
-	<option value="" selected>地域を選択してください</option>
-	<option value="00000">日本（全国）</option>
-	<option value="4">都道府県</option>
-	<option value="5">市区町村・行政区</option>
+	<option value="" selected>Select a region</option>
+	<option value="00000">Japan as a whole</option>
+	<option value="4">prefectures</option>
+	<option value="5">city/ward/town/village</option>
 	</select>
 	<label id="prefField"></label>
 	<label id="cityField"></label>
 	</form>
 </div>
-<div id="sexArea"><span id="sexText" style="display:none;">男　 　女</span></div>
+<div id="sexArea" style="margin-left:10px;"><span id="sexText" style="display:none;">Male　 　  Female</span></div>
 <div id="chart_div"></div>
 <div class="buttonBox">
 	<input id="button1980" class="yearButtonClass" style="display:none;" type="button" value="1980" onclick="onButtonClick(1980)">
@@ -1178,11 +1177,11 @@ function kensyo(){
 	<input id="button2010" class="yearButtonClass" style="display:none;" type="button" value="2010" onclick="onButtonClick(2010)">
 	<input id="button2015" class="yearButtonClass" style="display:none;" type="button" value="2015" onclick="onButtonClick(2015)">
 	<input id="button2020" class="yearButtonClass" style="display:none;" type="button" value="2020" onclick="onButtonClick(2020)">
-	<input id="buttonRoop" class="roopButtonClass" style="display:none;" type="button" value="ループ" onclick="onButtonClick(9999)">
-	<input id="buttonColor" class="roopButtonClass" style="display:none;" type="button" value="色変更" onclick="changeColor()">
+	<input id="buttonRoop" class="roopButtonClass" style="display:none;" type="button" value="roop" onclick="onButtonClick(9999)">
+	<input id="buttonColor" class="roopButtonClass" style="display:none;" type="button" value="color" onclick="changeColor()">
 </div>
 <div class="footerTextClass">
-	<p style="text-align:center;"><a href="./indexEn.html">English</a>　 <a href="https://github.com/MasahiroHayashi/pyramid">GitHub</a>　 <a href="https://www.mirko.jp/pyramid/data/">data</a></p>
+	<p style="text-align:center;"><a href="./">Japanese</a>　 <a href="https://github.com/MasahiroHayashi/pyramid">GitHub</a>　 <a href="https://www.mirko.jp/pyramid/data/">data</a></p>
 </div>
 
 <!-- /////////////  以下検証用  ///////////////
